@@ -146,29 +146,36 @@ if run:
         with tempfile.NamedTemporaryFile(delete=False, suffix=".pdf") as tmp_out:
             output_path = tmp_out.name
 
-        # If your processor can accept options later, pass them here.
-        # For now, these toggles improve UX even if backend ignores them.
+        # Run redaction
         processor.redact_pdf(input_path, output_path)
 
     st.balloons()
     st.success("Redaction completed successfully!")
 
+    # Serve the file to the user and ensure temp files are removed afterwards
+    try:
+        with open(output_path, "rb") as f:
+            st.download_button(
+                label="⬇️ Download Redacted PDF",
+                data=f,
+                file_name=f"redacted_{uploaded_pdf.name}",
+                mime="application/pdf",
+                use_container_width=True
+            )
 
-    with open(output_path, "rb") as f:
-        st.download_button(
-            label="⬇️ Download Redacted PDF",
-            data=f,
-            file_name=f"redacted_{uploaded_pdf.name}",
-            mime="application/pdf",
-            use_container_width=True
+        st.markdown(
+            '<p class="small-note">✅ The output PDF is regenerated from sanitized content. '
+            'PII is removed (not merely hidden).</p>',
+            unsafe_allow_html=True
         )
-
-    st.markdown(
-        '<p class="small-note">✅ The output PDF is regenerated from sanitized content. '
-        'PII is removed (not merely hidden).</p>',
-        unsafe_allow_html=True
-    )
-    
-
+    finally:
+        # Cleanup temporary files containing potentially sensitive data
+        for p in (input_path, output_path):
+            try:
+                if p and os.path.exists(p):
+                    os.remove(p)
+            except Exception:
+                # ignore cleanup errors (could log to a file if needed)
+                pass
     
 
